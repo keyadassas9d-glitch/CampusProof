@@ -1,6 +1,58 @@
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import "../App.css";
 
 function ItemDetails() {
+  const { id } = useParams();
+
+  const [item, setItem] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch(`http://127.0.0.1:8000/api/items/${id}/`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Item not found");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setItem(data);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error(error);
+        setError("Unable to load this item.");
+        setLoading(false);
+      });
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="item-details-page">
+        <main className="item-details-container">
+          <h2>Loading item...</h2>
+        </main>
+      </div>
+    );
+  }
+
+  if (error || !item) {
+    return (
+      <div className="item-details-page">
+        <main className="item-details-container">
+          <h2>{error || "Item not found"}</h2>
+          <a href="/browse-items" className="details-back">
+            ← Back to all items
+          </a>
+        </main>
+      </div>
+    );
+  }
+
+  const isLost = item.item_type === "lost";
+
   return (
     <div className="item-details-page">
 
@@ -22,7 +74,6 @@ function ItemDetails() {
       {/* Main Content */}
       <main className="item-details-container">
 
-        {/* Back */}
         <a href="/browse-items" className="details-back">
           ← Back to all items
         </a>
@@ -30,31 +81,31 @@ function ItemDetails() {
 
         <div className="details-card">
 
-          {/* Left - Image */}
+          {/* Image / Icon */}
           <div className="details-image">
-            🎧
+
+            {isLost ? "🔴" : "🟢"}
 
             <span className="details-status">
-              Lost
+              {isLost ? "Lost" : "Found"}
             </span>
+
           </div>
 
 
-          {/* Right - Information */}
+          {/* Information */}
           <div className="details-info">
 
             <span className="details-label">
-              LOST ITEM
+              {isLost ? "LOST ITEM" : "FOUND ITEM"}
             </span>
 
             <h1>
-              Wireless Earbuds
+              {item.name}
             </h1>
 
             <p className="details-description">
-              Black wireless earbuds with a small scratch
-              on the charging case. The case has a small
-              silver mark near the hinge.
+              {item.description}
             </p>
 
 
@@ -69,11 +120,11 @@ function ItemDetails() {
 
                 <div>
                   <small>
-                    Last seen
+                    {isLost ? "Last seen" : "Found at"}
                   </small>
 
                   <strong>
-                    Library
+                    {item.location}
                   </strong>
                 </div>
 
@@ -88,30 +139,11 @@ function ItemDetails() {
 
                 <div>
                   <small>
-                    Date lost
+                    {isLost ? "Date lost" : "Date found"}
                   </small>
 
                   <strong>
-                    August 20, 2026
-                  </strong>
-                </div>
-
-              </div>
-
-
-              <div className="detail-row">
-
-                <span className="detail-icon">
-                  🕐
-                </span>
-
-                <div>
-                  <small>
-                    Approximate time
-                  </small>
-
-                  <strong>
-                    2:30 PM
+                    {item.date}
                   </strong>
                 </div>
 
@@ -130,7 +162,26 @@ function ItemDetails() {
                   </small>
 
                   <strong>
-                    Electronics
+                    {item.category}
+                  </strong>
+                </div>
+
+              </div>
+
+
+              <div className="detail-row">
+
+                <span className="detail-icon">
+                  📊
+                </span>
+
+                <div>
+                  <small>
+                    Status
+                  </small>
+
+                  <strong>
+                    {item.status}
                   </strong>
                 </div>
 
@@ -139,38 +190,15 @@ function ItemDetails() {
             </div>
 
 
-            {/* Possible Match */}
-            <div className="possible-match">
-
-              <div className="match-icon">
-                ✨
-              </div>
-
-              <div>
-                <strong>
-                  Possible match found
-                </strong>
-
-                <p>
-                  CampusProof found an item that looks
-                  similar to this report.
-                </p>
-              </div>
-
-              <span>
-                94%
-              </span>
-
-            </div>
-
-
             {/* Claim Button */}
             <a
-  href="/claim/1"
-  className="claim-button"
->
-  This is my item →
-</a>
+              href={`/claim/${item.id}`}
+              className="claim-button"
+            >
+              {isLost
+                ? "This is my item →"
+                : "Claim this item →"}
+            </a>
 
             <p className="claim-note">
               You'll need to verify ownership before

@@ -218,7 +218,7 @@ function App() {
 
         <Route path="/item/:id" element={<ItemDetails />} />
 
-        <Route path="/claim/1" element={<ClaimItem />} />
+        <Route path="/claim/:id" element={<ClaimItem />} />
 
         <Route path="/profile" element={<Profile />} />
         

@@ -43,25 +43,45 @@ function ReportLost() {
       return;
     }
 
+    // Check image size
+    if (photo && photo.size > 5 * 1024 * 1024) {
+      setError("Image size must be less than 5MB.");
+      return;
+    }
+
     setLoading(true);
 
     try {
+      // Create FormData for text + image upload
+      const formData = new FormData();
+
+      formData.append("name", itemName);
+      formData.append("item_type", "lost");
+
+      // Combine description + additional details
+      const fullDescription = additionalDetails.trim()
+        ? `${description} ${additionalDetails}`
+        : description;
+
+      formData.append("description", fullDescription);
+      formData.append("location", location);
+      formData.append("date", dateLost);
+      formData.append("category", category);
+      formData.append(
+        "registration_number",
+        user.registration_number
+      );
+
+      // Add image if selected
+      if (photo) {
+        formData.append("image", photo);
+      }
+
       const response = await fetch(
         "http://127.0.0.1:8000/api/items/create/",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: itemName,
-            item_type: "lost",
-            description: description,
-            location: location,
-            date: dateLost,
-            category: category,
-            registration_number: user.registration_number,
-          }),
+          body: formData,
         }
       );
 

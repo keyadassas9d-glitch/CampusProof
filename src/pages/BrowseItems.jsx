@@ -14,7 +14,7 @@ function BrowseItems() {
   // Get items from Django
   useEffect(() => {
 
-    fetch("http://127.0.0.1:8000/api/items/all/")
+    fetch("http://127.0.0.1:8000/api/items/")
       .then((response) => {
 
         if (!response.ok) {

@@ -33,8 +33,12 @@ function ReportFound() {
     }
 
     // Registration number saved during login
-    const registrationNumber =
-      localStorage.getItem("registration_number");
+    const savedUser = JSON.parse(
+  localStorage.getItem("campusproofUser")
+);
+
+const registrationNumber =
+  savedUser?.registration_number;
 
     if (!registrationNumber) {
       setError(

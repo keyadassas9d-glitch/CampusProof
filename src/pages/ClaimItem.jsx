@@ -1,7 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import "../App.css";
 
 function ClaimItem() {
+  const { id } = useParams();
+
+  const [item, setItem] = useState(null);
+
   const [answers, setAnswers] = useState({
     color: "",
     uniqueFeature: "",
@@ -9,6 +14,27 @@ function ClaimItem() {
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Get item details
+  useEffect(() => {
+    fetch(`http://127.0.0.1:8000/api/items/${id}/`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Item not found");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        setItem(data);
+      })
+      .catch((error) => {
+        console.error(error);
+        setError("Unable to load this item.");
+      });
+  }, [id]);
 
   const handleChange = (e) => {
     setAnswers({
@@ -17,20 +43,129 @@ function ClaimItem() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
+    setError("");
 
     if (
       !answers.color.trim() ||
       !answers.uniqueFeature.trim() ||
       !answers.lastUsed.trim()
     ) {
-      alert("Please answer all verification questions.");
+      setError("Please answer all verification questions.");
       return;
     }
 
-    setSubmitted(true);
+    const savedUser = JSON.parse(
+      localStorage.getItem("campusproofUser")
+    );
+
+    const registrationNumber =
+      savedUser?.registration_number;
+
+    if (!registrationNumber) {
+      setError("User information not found. Please login again.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:8000/api/items/${id}/claim/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            registration_number: registrationNumber,
+            message:
+              `Color: ${answers.color}. ` +
+              `Unique feature: ${answers.uniqueFeature}. ` +
+              `Last used: ${answers.lastUsed}.`,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Failed to submit claim."
+        );
+      }
+
+      setSubmitted(true);
+
+    } catch (error) {
+      console.error(error);
+
+      setError(
+        error.message ||
+        "Cannot connect to the server. Make sure Django is running."
+      );
+
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // Loading item
+  if (!item && !error) {
+    return (
+      <div className="claim-page">
+        <nav className="dashboard-nav">
+          <div className="logo">
+            <span className="logo-icon">✦</span>
+            CampusProof
+          </div>
+
+          <a href="/browse-items" className="back-dashboard">
+            ← Browse Items
+          </a>
+        </nav>
+
+        <main className="claim-container">
+          <div className="claim-heading">
+            <h1>Loading item...</h1>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Item loading error
+  if (error && !item) {
+    return (
+      <div className="claim-page">
+        <nav className="dashboard-nav">
+          <div className="logo">
+            <span className="logo-icon">✦</span>
+            CampusProof
+          </div>
+
+          <a href="/browse-items" className="back-dashboard">
+            ← Browse Items
+          </a>
+        </nav>
+
+        <main className="claim-container">
+          <div className="claim-heading">
+            <h1>{error}</h1>
+
+            <a
+              href="/browse-items"
+              className="success-dashboard-btn"
+            >
+              ← Back to Items
+            </a>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="claim-page">
@@ -68,7 +203,6 @@ function ClaimItem() {
         </div>
 
 
-        {/* Success Message */}
         {submitted ? (
 
           <div className="claim-success">
@@ -104,26 +238,32 @@ function ClaimItem() {
         ) : (
 
           <>
+
             {/* Item Summary */}
 
             <div className="claim-item-summary">
 
               <div className="claim-item-image">
-                🎧
+                {item.item_type === "lost" ? "🔴" : "🟢"}
               </div>
 
               <div>
 
                 <span>
-                  FOUND ITEM
+                  {item.item_type === "lost"
+                    ? "LOST ITEM"
+                    : "FOUND ITEM"}
                 </span>
 
                 <h2>
-                  Wireless Earbuds
+                  {item.name}
                 </h2>
 
                 <p>
-                  Found near Library · August 20, 2026
+                  {item.item_type === "lost"
+                    ? "Last seen"
+                    : "Found at"}{" "}
+                  · {item.location} · {item.date}
                 </p>
 
               </div>
@@ -165,7 +305,7 @@ function ClaimItem() {
               <div className="verification-question">
 
                 <label>
-                  1. What color is the charging case?
+                  1. What color is the item?
                 </label>
 
                 <input
@@ -217,6 +357,22 @@ function ClaimItem() {
               </div>
 
 
+              {/* Error */}
+
+              {error && (
+                <p
+                  style={{
+                    color: "red",
+                    textAlign: "center",
+                    fontWeight: "600",
+                    marginBottom: "15px",
+                  }}
+                >
+                  {error}
+                </p>
+              )}
+
+
               {/* Warning */}
 
               <div className="claim-warning">
@@ -239,20 +395,25 @@ function ClaimItem() {
               <button
                 type="submit"
                 className="claim-submit"
+                disabled={loading}
               >
-                Submit Claim →
+                {loading
+                  ? "Submitting..."
+                  : "Submit Claim →"}
               </button>
 
 
               <a
-                href="/item/1"
+                href={`/item/${item.id}`}
                 className="cancel-claim"
               >
                 Cancel and go back
               </a>
 
             </form>
+
           </>
+
         )}
 
       </main>
