@@ -6,7 +6,11 @@ function ItemDetails() {
   const { id } = useParams();
 
   const [item, setItem] = useState(null);
+  const [matches, setMatches] = useState([]);
+
   const [loading, setLoading] = useState(true);
+  const [matchesLoading, setMatchesLoading] = useState(true);
+
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -15,6 +19,7 @@ function ItemDetails() {
         if (!response.ok) {
           throw new Error("Item not found");
         }
+
         return response.json();
       })
       .then((data) => {
@@ -25,6 +30,25 @@ function ItemDetails() {
         console.error(error);
         setError("Unable to load this item.");
         setLoading(false);
+      });
+
+    // Get possible matches
+    fetch(`http://127.0.0.1:8000/api/items/${id}/matches/`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Unable to load matches");
+        }
+
+        return response.json();
+      })
+      .then((data) => {
+        setMatches(data.matches || []);
+        setMatchesLoading(false);
+      })
+      .catch((error) => {
+        console.error(error);
+        setMatches([]);
+        setMatchesLoading(false);
       });
   }, [id]);
 
@@ -42,10 +66,18 @@ function ItemDetails() {
     return (
       <div className="item-details-page">
         <main className="item-details-container">
-          <h2>{error || "Item not found"}</h2>
-          <a href="/browse-items" className="details-back">
+
+          <h2>
+            {error || "Item not found"}
+          </h2>
+
+          <a
+            href="/browse-items"
+            className="details-back"
+          >
             ← Back to all items
           </a>
+
         </main>
       </div>
     );
@@ -64,7 +96,10 @@ function ItemDetails() {
           CampusProof
         </div>
 
-        <a href="/browse-items" className="back-dashboard">
+        <a
+          href="/browse-items"
+          className="back-dashboard"
+        >
           ← Browse Items
         </a>
 
@@ -74,11 +109,15 @@ function ItemDetails() {
       {/* Main Content */}
       <main className="item-details-container">
 
-        <a href="/browse-items" className="details-back">
+        <a
+          href="/browse-items"
+          className="details-back"
+        >
           ← Back to all items
         </a>
 
 
+        {/* Item Details */}
         <div className="details-card">
 
           {/* Image / Icon */}
@@ -97,7 +136,9 @@ function ItemDetails() {
           <div className="details-info">
 
             <span className="details-label">
-              {isLost ? "LOST ITEM" : "FOUND ITEM"}
+              {isLost
+                ? "LOST ITEM"
+                : "FOUND ITEM"}
             </span>
 
             <h1>
@@ -119,13 +160,17 @@ function ItemDetails() {
                 </span>
 
                 <div>
+
                   <small>
-                    {isLost ? "Last seen" : "Found at"}
+                    {isLost
+                      ? "Last seen"
+                      : "Found at"}
                   </small>
 
                   <strong>
                     {item.location}
                   </strong>
+
                 </div>
 
               </div>
@@ -138,13 +183,17 @@ function ItemDetails() {
                 </span>
 
                 <div>
+
                   <small>
-                    {isLost ? "Date lost" : "Date found"}
+                    {isLost
+                      ? "Date lost"
+                      : "Date found"}
                   </small>
 
                   <strong>
                     {item.date}
                   </strong>
+
                 </div>
 
               </div>
@@ -157,6 +206,7 @@ function ItemDetails() {
                 </span>
 
                 <div>
+
                   <small>
                     Category
                   </small>
@@ -164,6 +214,7 @@ function ItemDetails() {
                   <strong>
                     {item.category}
                   </strong>
+
                 </div>
 
               </div>
@@ -176,6 +227,7 @@ function ItemDetails() {
                 </span>
 
                 <div>
+
                   <small>
                     Status
                   </small>
@@ -183,6 +235,7 @@ function ItemDetails() {
                   <strong>
                     {item.status}
                   </strong>
+
                 </div>
 
               </div>
@@ -208,6 +261,150 @@ function ItemDetails() {
           </div>
 
         </div>
+
+
+        {/* Possible Matches */}
+        <section className="matches-section">
+
+          <div className="matches-heading">
+
+            <span>
+              SMART MATCHING
+            </span>
+
+            <h2>
+              Possible Matches
+            </h2>
+
+            <p>
+              CampusProof found items that may be
+              related to this report.
+            </p>
+
+          </div>
+
+
+          {matchesLoading ? (
+
+            <div className="matches-message">
+              Checking for possible matches...
+            </div>
+
+          ) : matches.length === 0 ? (
+
+            <div className="matches-message">
+              No possible matches found yet.
+            </div>
+
+          ) : (
+
+            <div className="matches-list">
+
+              {matches.map((match) => (
+
+                <div
+                  className="match-card"
+                  key={match.id}
+                >
+
+                  {/* Match Icon */}
+                  <div className="match-icon">
+                    {match.item_type === "lost"
+                      ? "🔴"
+                      : "🟢"}
+                  </div>
+
+
+                  {/* Match Information */}
+                  <div className="match-info">
+
+                    <span className="match-type">
+                      {match.item_type === "lost"
+                        ? "LOST ITEM"
+                        : "FOUND ITEM"}
+                    </span>
+
+                    <h3>
+                      {match.name}
+                    </h3>
+
+                    <p>
+                      {match.description}
+                    </p>
+
+                    <div className="match-details">
+
+                      <span>
+                        📍 {match.location}
+                      </span>
+
+                      <span>
+                        📦 {match.category}
+                      </span>
+
+                    </div>
+
+
+                    {/* Match Reasons */}
+                    {match.match_reasons &&
+                      match.match_reasons.length > 0 && (
+
+                        <div className="match-reasons">
+
+                          <strong>
+                            Why it may match:
+                          </strong>
+
+                          <ul>
+
+                            {match.match_reasons.map(
+                              (reason, index) => (
+
+                                <li key={index}>
+                                  {reason}
+                                </li>
+
+                              )
+                            )}
+
+                          </ul>
+
+                        </div>
+
+                      )}
+
+                  </div>
+
+
+                  {/* Match Score */}
+                  <div className="match-score">
+
+                    <strong>
+                      {match.match_score}%
+                    </strong>
+
+                    <span>
+                      Match
+                    </span>
+
+                    <a
+                      href={`/item/${match.id}`}
+                      className="view-match"
+                    >
+                      View →
+                    </a>
+
+                  </div>
+
+                </div>
+
+              ))}
+
+            </div>
+
+          )}
+
+        </section>
 
       </main>
 

@@ -2,7 +2,6 @@ import { useState } from "react";
 import "../App.css";
 
 function ReportFound() {
-
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
@@ -15,12 +14,13 @@ function ReportFound() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
     setMessage("");
     setError("");
 
+    // Check required fields
     if (
       !name ||
       !category ||
@@ -32,13 +32,18 @@ function ReportFound() {
       return;
     }
 
-    // Registration number saved during login
-    const savedUser = JSON.parse(
-  localStorage.getItem("campusproofUser")
-);
+    // Get logged-in user
+    const savedUser = localStorage.getItem("campusproofUser");
 
-const registrationNumber =
-  savedUser?.registration_number;
+    if (!savedUser) {
+      setError("Please login before reporting an item.");
+      return;
+    }
+
+    const user = JSON.parse(savedUser);
+
+    const registrationNumber =
+      user?.registration_number;
 
     if (!registrationNumber) {
       setError(
@@ -50,35 +55,34 @@ const registrationNumber =
     setLoading(true);
 
     try {
+      // Combine description and additional details
+      const fullDescription = additionalDetails.trim()
+        ? `${description} ${additionalDetails}`
+        : description;
+
+      // Create FormData
+      const formData = new FormData();
+
+      formData.append("name", name);
+      formData.append("item_type", "found");
+      formData.append("description", fullDescription);
+      formData.append("location", location);
+      formData.append("date", date);
+      formData.append("category", category);
+      formData.append(
+        "registration_number",
+        registrationNumber
+      );
 
       const response = await fetch(
         "http://127.0.0.1:8000/api/items/create/",
         {
           method: "POST",
-
-          headers: {
-            "Content-Type": "application/json",
-          },
-
-          body: JSON.stringify({
-            name: name,
-            item_type: "found",
-            description:
-              description +
-              (additionalDetails
-                ? " " + additionalDetails
-                : ""),
-            location: location,
-            date: date,
-            category: category,
-            registration_number: registrationNumber,
-          }),
+          body: formData,
         }
       );
 
-
       const data = await response.json();
-
 
       if (!response.ok) {
         throw new Error(
@@ -86,11 +90,9 @@ const registrationNumber =
         );
       }
 
-
       setMessage(
         "Found item reported successfully! 🎉"
       );
-
 
       // Clear form
       setName("");
@@ -102,21 +104,16 @@ const registrationNumber =
       setAdditionalDetails("");
 
     } catch (error) {
-
       console.error(error);
 
       setError(
         error.message ||
         "Cannot connect to the server. Make sure Django is running."
       );
-
     } finally {
-
       setLoading(false);
-
     }
   };
-
 
   return (
     <div className="report-page">
@@ -138,7 +135,6 @@ const registrationNumber =
 
       </nav>
 
-
       {/* Main Content */}
       <main className="report-container">
 
@@ -157,8 +153,10 @@ const registrationNumber =
 
         </div>
 
-
-        <div className="report-card">
+        <form
+          className="report-card"
+          onSubmit={handleSubmit}
+        >
 
           {/* Item Name */}
           <div className="form-group">
@@ -171,11 +169,12 @@ const registrationNumber =
               type="text"
               placeholder="e.g. AirPods, Black Backpack, ID Card"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) =>
+                setName(e.target.value)
+              }
             />
 
           </div>
-
 
           {/* Category */}
           <div className="form-group">
@@ -186,7 +185,9 @@ const registrationNumber =
 
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e) =>
+                setCategory(e.target.value)
+              }
             >
 
               <option value="">
@@ -225,7 +226,6 @@ const registrationNumber =
 
           </div>
 
-
           {/* Description */}
           <div className="form-group">
 
@@ -243,7 +243,6 @@ const registrationNumber =
             ></textarea>
 
           </div>
-
 
           {/* Date and Time */}
           <div className="form-row">
@@ -264,7 +263,6 @@ const registrationNumber =
 
             </div>
 
-
             <div className="form-group">
 
               <label>
@@ -282,7 +280,6 @@ const registrationNumber =
             </div>
 
           </div>
-
 
           {/* Location */}
           <div className="form-group">
@@ -338,7 +335,6 @@ const registrationNumber =
 
           </div>
 
-
           {/* Photo */}
           <div className="form-group">
 
@@ -369,7 +365,6 @@ const registrationNumber =
 
           </div>
 
-
           {/* Additional Details */}
           <div className="form-group">
 
@@ -388,41 +383,24 @@ const registrationNumber =
 
           </div>
 
-
           {/* Success */}
           {message && (
-            <p
-              style={{
-                color: "green",
-                textAlign: "center",
-                fontWeight: "600",
-                marginBottom: "15px"
-              }}
-            >
+            <p className="success-message">
               {message}
             </p>
           )}
 
-
           {/* Error */}
           {error && (
-            <p
-              style={{
-                color: "red",
-                textAlign: "center",
-                fontWeight: "600",
-                marginBottom: "15px"
-              }}
-            >
+            <p className="error-message">
               {error}
             </p>
           )}
 
-
           {/* Submit */}
           <button
+            type="submit"
             className="report-submit"
-            onClick={handleSubmit}
             disabled={loading}
           >
             {loading
@@ -430,7 +408,7 @@ const registrationNumber =
               : "Report Found Item →"}
           </button>
 
-        </div>
+        </form>
 
       </main>
 
